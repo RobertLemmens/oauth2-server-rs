@@ -1,0 +1,20 @@
+[package]
+name = "oauth2-server-rs"
+version = "0.1.0"
+authors = ["Robert Lemmens <rj.lemmens@pm.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = [ "full" ]}
+warp = "0.3.0"
+serde = { version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+rand = "0.8.3"
+dotenv = "0.15.0" # read environment
+config = "0.10.1" # read config van vershillende sources
+deadpool-postgres = "0.7.0" # Connection pool
+tokio-postgres = "0.7.0" # Async client
+tokio-pg-mapper = "0.2.0"
+tokio-pg-mapper-derive = "0.2.0"
