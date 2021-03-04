@@ -25,10 +25,9 @@ pub struct User {
 #[derive(Serialize, Deserialize, PostgresMapper)]
 #[pg_mapper(table="access_tokens")]
 pub struct AccessToken {
-    pub id: i32,
     pub access_token: String,
+    pub token_type: String,
     pub expire_time: String,
-    pub user_id: i32
 }
 
 #[derive(Deserialize)]

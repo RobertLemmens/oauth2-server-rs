@@ -757,6 +757,7 @@ dependencies = [
 name = "oauth2-server-rs"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "chrono",
  "config",
  "deadpool-postgres",

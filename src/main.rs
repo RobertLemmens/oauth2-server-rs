@@ -1,17 +1,17 @@
 mod models;
 mod db;
 
-use db::insert_token;
 use warp::{Filter, Rejection, Reply, reply::json, hyper::StatusCode, reject, reject::Reject};
 use warp::http::Response;
 use rand::Rng;
 use rand::distributions::Alphanumeric;
 use crate::models::{TokenParams, Config, User};
 use dotenv::dotenv;
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{net::{Ipv4Addr, SocketAddrV4}, str::from_utf8};
 use tokio_postgres::NoTls;
 use deadpool_postgres::{Pool, Client};
 use std::convert::Infallible;
+use std::str;
 
 /*
  *
@@ -35,17 +35,29 @@ async fn get_users(db_pool: deadpool_postgres::Pool) -> std::result::Result<impl
     Ok(json(&result.await.map_err(|e| warp::reject::reject())?))
 }
 
-async fn get_access_token(params: Option<TokenParams>, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
+async fn get_access_token(params: Option<TokenParams>, client_authorization: String, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
     let mut validation = 0;
+    let mut client_db_id = 0;
 
     match params {
         Some(obj) => {
             match obj.grant_type.as_str() {
                 "password" => {
                     if obj.username.is_some() && obj.password.is_some() {
-                        validation = db::validate_credentials(&client, obj.username.unwrap(), obj.password.unwrap()).await;
+                        println!("{}", client_authorization);
+                        let f1: Vec<&str> = client_authorization.split(" ").collect();
+                        let split = base64::decode(f1[1]).unwrap();
+                        let res: Vec<&str> = str::from_utf8(&split).unwrap().split(":").collect();
+                        client_db_id = db::validate_client_credentials(&client, res[0].to_string(), res[1].to_string()).await;
+                        println!("Client id is {}", client_db_id);
+                        validation = db::validate_password_credentials(&client, obj.username.unwrap(), obj.password.unwrap()).await;
+                    }
+                },
+                "client_credentials" => {
+                    if obj.client_id.is_some() && obj.client_secret.is_some() {
+                        validation = db::validate_client_credentials(&client, obj.client_id.unwrap(), obj.client_secret.unwrap()).await;
                     }
                 },
                 _ => {
@@ -57,10 +69,13 @@ async fn get_access_token(params: Option<TokenParams>, db_pool: deadpool_postgre
         }
     }
 
+    if client_db_id == 0 {
+        return Err(warp::reject::not_found())
+    }
 
     if validation > 0 {
         let token = generate_token();
-        let res = db::insert_token(&client, token.clone(), validation).await;
+        let res = db::insert_token(&client, token.clone(), validation, client_db_id).await;
         return Ok(json(&res))
     } else {
         return Err(warp::reject::not_found())
@@ -75,6 +90,14 @@ async fn create_user(db_pool: deadpool_postgres::Pool) -> std::result::Result<im
 fn with_db(db_pool: deadpool_postgres::Pool) -> impl Filter<Extract = (deadpool_postgres::Pool,), Error = Infallible> + Clone {
     warp::any().map(move || db_pool.clone())
 }
+
+// validate client auth header
+fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
+    warp::header::<String>("Authorization").map(|token: String|{
+        token 
+    })
+}
+
 
 async fn custom_errors(err: Rejection) -> Result<impl Reply, Rejection> {
     if err.is_not_found() {
@@ -93,6 +116,8 @@ async fn main() {
 
     println!("Starting oauth server on http://{}:{}/", config.server.host, config.server.port);
 
+    let auth = warp::header::<String>("Authorization");
+
     let opt_query = warp::query::<TokenParams>()
         .map(Some)
         .or_else(|_| async { Ok::<(Option<TokenParams>,), std::convert::Infallible>((None,)) });
@@ -101,6 +126,7 @@ async fn main() {
         .and(warp::path("oauth"))
         .and(warp::path("token"))
         .and(opt_query)
+        .and(auth)
         .and(with_db(pool.clone()))
         .and_then(get_access_token)
         .recover(custom_errors);
