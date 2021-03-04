@@ -13,7 +13,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      PGADMIN_DEFAULT_EMAIL: robert@codebulb.nl
+      PGADMIN_DEFAULT_EMAIL: postgres@test.nl
       PGADMIN_DEFAULT_PASSWORD: postgres
     ports:
       - 8080:80

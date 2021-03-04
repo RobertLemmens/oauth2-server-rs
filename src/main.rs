@@ -46,13 +46,14 @@ async fn get_access_token(params: Option<TokenParams>, client_authorization: Str
             match obj.grant_type.as_str() {
                 "password" => {
                     if obj.username.is_some() && obj.password.is_some() {
-                        println!("{}", client_authorization);
-                        let f1: Vec<&str> = client_authorization.split(" ").collect();
-                        let split = base64::decode(f1[1]).unwrap();
-                        let res: Vec<&str> = str::from_utf8(&split).unwrap().split(":").collect();
-                        client_db_id = db::validate_client_credentials(&client, res[0].to_string(), res[1].to_string()).await;
-                        println!("Client id is {}", client_db_id);
-                        validation = db::validate_password_credentials(&client, obj.username.unwrap(), obj.password.unwrap()).await;
+                        if client_authorization.len() > 0 {
+                            let f1: Vec<&str> = client_authorization.split(" ").collect();
+                            let split = base64::decode(f1[1]).unwrap();
+                            let res: Vec<&str> = str::from_utf8(&split).unwrap().split(":").collect();
+                            client_db_id = db::validate_client_credentials(&client, res[0].to_string(), res[1].to_string()).await;
+                            println!("Client id is {}", client_db_id);
+                            validation = db::validate_password_credentials(&client, obj.username.unwrap(), obj.password.unwrap()).await;
+                        }
                     }
                 },
                 "client_credentials" => {
@@ -116,14 +117,18 @@ async fn main() {
 
     println!("Starting oauth server on http://{}:{}/", config.server.host, config.server.port);
 
-    let auth = warp::header::<String>("Authorization");
+    let auth = warp::header::<String>("Authorization").or(warp::any().map(|| String::new())).unify();
 
     let opt_query = warp::query::<TokenParams>()
         .map(Some)
         .or_else(|_| async { Ok::<(Option<TokenParams>,), std::convert::Infallible>((None,)) });
 
+    let introspect_route = warp::post().and(warp::path("oauth2")).and(warp::path("introspect"));
+
+    let logout_route = warp::post().and(warp::path("oauth2")).and(warp::path("logout"));
+
     let token_route = warp::post()
-        .and(warp::path("oauth"))
+        .and(warp::path("oauth2"))
         .and(warp::path("token"))
         .and(opt_query)
         .and(auth)
