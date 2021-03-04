@@ -1,6 +1,7 @@
 mod models;
 mod db;
 
+use db::insert_token;
 use warp::{Filter, Rejection, Reply, reply::json, hyper::StatusCode, reject, reject::Reject};
 use warp::http::Response;
 use rand::Rng;
@@ -37,7 +38,7 @@ async fn get_users(db_pool: deadpool_postgres::Pool) -> std::result::Result<impl
 async fn get_access_token(params: Option<TokenParams>, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
-    let mut validation = false;
+    let mut validation = 0;
 
     match params {
         Some(obj) => {
@@ -57,9 +58,10 @@ async fn get_access_token(params: Option<TokenParams>, db_pool: deadpool_postgre
     }
 
 
-    if validation {
+    if validation > 0 {
         let token = generate_token();
-        return Ok(json(&token))
+        let res = db::insert_token(&client, token.clone(), validation).await;
+        return Ok(json(&res))
     } else {
         return Err(warp::reject::not_found())
     }
@@ -95,36 +97,17 @@ async fn main() {
         .map(Some)
         .or_else(|_| async { Ok::<(Option<TokenParams>,), std::convert::Infallible>((None,)) });
 
-    let route = warp::post()
+    let token_route = warp::post()
         .and(warp::path("oauth"))
         .and(warp::path("token"))
         .and(opt_query)
         .and(with_db(pool.clone()))
-        .and_then(get_access_token).recover(custom_errors);
-        // .map(|p: Option<TokenParams>, pool: deadpool_postgres::Pool| match p {
-        //     Some(obj) => {
-        //         match obj.grant_type.as_str() {
-        //             "password" => {
-        //                 if obj.username.is_some() && obj.password.is_some() {
-        //                     let pass = obj.password.expect("Could not find password");
-        //                     db::validate_credentials(client, obj.username, obj.password);
-        //                     return Response::builder().body(generate_token());
-        //                 } else {
-        //                     return Response::builder().body(format!("Missing username/password"));
-        //                 }
-        //             }
-        //             "client_credentials" => {Response::builder().body(format!("Authorizing with client credentials flow"))}
-        //             _ => {Response::builder().body(format!("Error!, grant type {} unknown", obj.grant_type))}
-        //         }
-        //     }
-        //     None => Response::builder()
-        //         .status(StatusCode::BAD_REQUEST)
-        //         .body(String::from("Failed to decode the query parameters")),
-        // });
+        .and_then(get_access_token)
+        .recover(custom_errors);
 
     let crud_route = warp::path("users").and(with_db(pool.clone())).and_then(get_users);
 
-    let routes = warp::post().and(route.or(crud_route));
+    let routes = warp::post().and(token_route.or(crud_route));
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);
