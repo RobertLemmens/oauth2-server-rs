@@ -27,28 +27,30 @@ pub struct User {
 pub struct AccessToken {
     pub access_token: String,
     pub token_type: String,
-    pub scope: String,
-    pub expires_in: String,
+    pub scope: Option<String>,
+    pub expires_in: i64,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Introspection {
     pub active: bool,
     pub client_id: String,
-    pub username: String,
-    pub scope: String,
+    pub username: Option<String>,
+    pub scope: Option<String>,
     pub token_type: String,
-    pub exp: i32,
-    pub iat: i32
+    pub issuer: String,
+    pub exp: i64,
+    pub iat: i64
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct ServerConfig {
     pub host: String,
-    pub port: u16
+    pub port: u16,
+    pub name: String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub server: ServerConfig,
     pub pg: deadpool_postgres::Config
