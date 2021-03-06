@@ -27,7 +27,19 @@ pub struct User {
 pub struct AccessToken {
     pub access_token: String,
     pub token_type: String,
-    pub expire_time: String,
+    pub scope: String,
+    pub expires_in: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Introspection {
+    pub active: bool,
+    pub client_id: String,
+    pub username: String,
+    pub scope: String,
+    pub token_type: String,
+    pub exp: i32,
+    pub iat: i32
 }
 
 #[derive(Deserialize)]

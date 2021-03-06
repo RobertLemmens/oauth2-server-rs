@@ -12,6 +12,7 @@ use tokio_postgres::NoTls;
 use deadpool_postgres::{Pool, Client};
 use std::convert::Infallible;
 use std::str;
+use std::collections::HashMap;
 
 /*
  *
@@ -26,6 +27,12 @@ fn generate_token() -> String {
         .collect()
 }
 
+fn decode_client_auth(client_authorization: String) -> Vec<String> {
+    let f1: Vec<&str> = client_authorization.split(" ").collect();
+    let split = base64::decode(f1[1]).unwrap();
+    str::from_utf8(&split).unwrap().split(":").map(|c: &str| c.to_string()).collect()
+}
+
 async fn get_users(db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
@@ -35,6 +42,17 @@ async fn get_users(db_pool: deadpool_postgres::Pool) -> std::result::Result<impl
     Ok(json(&result.await.map_err(|e| warp::reject::reject())?))
 }
 
+// Introspect a token
+async fn introspect_token(client_authorization: String, access_token: String, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
+    let client: Client = db_pool.get().await.expect("Error connecting to database");
+    let client_credentials = decode_client_auth(client_authorization);
+
+    let result = db::validate_access_token(&client, access_token, client_credentials[0].clone());
+
+    Ok(json(&result.await))
+}
+
+// Request an access token
 async fn get_access_token(params: Option<TokenParams>, client_authorization: String, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
@@ -119,11 +137,21 @@ async fn main() {
 
     let auth = warp::header::<String>("Authorization").or(warp::any().map(|| String::new())).unify();
 
+    // TODO betere manier om te falen
+    let introspect_body = warp::body::form()
+        .map(|form: HashMap<String, String>| form.get("token").unwrap().to_string());
+
     let opt_query = warp::query::<TokenParams>()
         .map(Some)
         .or_else(|_| async { Ok::<(Option<TokenParams>,), std::convert::Infallible>((None,)) });
 
-    let introspect_route = warp::post().and(warp::path("oauth2")).and(warp::path("introspect"));
+    let introspect_route = warp::post()
+        .and(warp::path("oauth2"))
+        .and(warp::path("introspect"))
+        .and(auth)
+        .and(introspect_body)
+        .and(with_db(pool.clone()))
+        .and_then(introspect_token);
 
     let logout_route = warp::post().and(warp::path("oauth2")).and(warp::path("logout"));
 
@@ -136,9 +164,7 @@ async fn main() {
         .and_then(get_access_token)
         .recover(custom_errors);
 
-    let crud_route = warp::path("users").and(with_db(pool.clone())).and_then(get_users);
-
-    let routes = warp::post().and(token_route.or(crud_route));
+    let routes = warp::post().and(introspect_route);
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);
