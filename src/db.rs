@@ -25,7 +25,9 @@ pub async fn validate_access_token(
     access_token: String,
     client_db_id: i32,
 ) -> Introspection {
-    let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, b.client_id, b.display_name, a.token_type, a.issuer from access_tokens as a join clients as b on a.client_id = b.id left join users as c on a.user_id = c.id where a.access_token = $1 and b.id = $2").await.unwrap();
+    let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, b.client_id, b.display_name, a.token_type, a.issuer 
+                                   from access_tokens as a join clients as b on a.client_id = b.id left join users as c on a.user_id = c.id 
+                                   where a.access_token = $1 and b.id = $2").await.unwrap();
     let response = client
         .query(&statement, &[&access_token, &client_db_id])
         .await
@@ -104,7 +106,10 @@ pub async fn insert_token(
     cid: i32,
     issuer: String,
 ) -> AccessToken {
-    let statement = client.prepare("insert into access_tokens (access_token, expire_time, user_id, client_id, scope, creation_time, token_type, issuer) values($1, $2, $3, $4, $5, NOW(), 'bearer', $6) on conflict on constraint unique_uid_cid do update set access_token = $1, expire_time = $2, creation_time = NOW(), scope = $5, issuer = $6").await.unwrap();
+    let statement = client.prepare("insert into access_tokens (access_token, expire_time, user_id, client_id, scope, creation_time, token_type, issuer) 
+                                   values($1, $2, $3, $4, $5, NOW(), 'bearer', $6) 
+                                   on conflict on constraint unique_uid_cid do 
+                                   update set access_token = $1, expire_time = $2, creation_time = NOW(), scope = $5, issuer = $6").await.unwrap();
     let token_duration = Duration::days(30);
     let local: DateTime<chrono::Local> = Local::now() + token_duration;
 
