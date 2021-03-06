@@ -17,4 +17,3 @@ The goal is to implement an oauth2 server based on [RFC-6749](https://tools.ietf
 
 * nicer errors (application and response)
 * logging / tracing
-* take issuer value from server name config property
