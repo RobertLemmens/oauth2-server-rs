@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use config::ConfigError;
+use serde::{Deserialize, Serialize};
 use tokio_pg_mapper_derive::PostgresMapper;
 
 #[derive(Deserialize, Serialize)]
@@ -15,15 +15,15 @@ pub struct TokenParams {
 }
 
 #[derive(Serialize, Deserialize, PostgresMapper)]
-#[pg_mapper(table="users")]
+#[pg_mapper(table = "users")]
 pub struct User {
     pub id: i32,
     pub username: Option<String>,
-    pub password: Option<String>
+    pub password: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, PostgresMapper)]
-#[pg_mapper(table="access_tokens")]
+#[pg_mapper(table = "access_tokens")]
 pub struct AccessToken {
     pub access_token: String,
     pub token_type: String,
@@ -40,20 +40,20 @@ pub struct Introspection {
     pub token_type: String,
     pub issuer: String,
     pub exp: i64,
-    pub iat: i64
+    pub iat: i64,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
     pub server: ServerConfig,
-    pub pg: deadpool_postgres::Config
+    pub pg: deadpool_postgres::Config,
 }
 
 impl Config {
@@ -62,5 +62,4 @@ impl Config {
         cfg.merge(config::Environment::new())?;
         cfg.try_into() // probeer te deserializen in het geselecteerde object
     }
-
 }

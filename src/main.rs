@@ -1,25 +1,20 @@
-mod models;
 mod db;
+mod models;
 
-use models::ServerConfig;
-use warp::{Filter, Rejection, Reply, hyper::StatusCode, post, reject, reject::Reject, reply::json};
-use warp::http::Response;
-use rand::Rng;
-use rand::distributions::Alphanumeric;
-use crate::models::{TokenParams, Config, User};
+use crate::models::{Config, TokenParams};
+use deadpool_postgres::Client;
 use dotenv::dotenv;
-use std::{net::{Ipv4Addr, SocketAddrV4}, str::from_utf8};
-use tokio_postgres::NoTls;
-use deadpool_postgres::{Pool, Client};
-use std::convert::Infallible;
-use std::str;
+use models::ServerConfig;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use std::collections::HashMap;
+use std::convert::Infallible;
+use std::net::{Ipv4Addr, SocketAddrV4};
+use std::str;
+use tokio_postgres::NoTls;
+use warp::http::Response;
+use warp::{hyper::StatusCode, reply::json, Filter, Rejection, Reply};
 
-/*
- *
- * RFC 6749 implementation of an oauth server.
- *
- * */
 fn generate_token() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -31,89 +26,135 @@ fn generate_token() -> String {
 fn decode_client_auth(client_authorization: String) -> Vec<String> {
     let f1: Vec<&str> = client_authorization.split(" ").collect();
     let split = base64::decode(f1[1]).unwrap();
-    str::from_utf8(&split).unwrap().split(":").map(|c: &str| c.to_string()).collect()
+    str::from_utf8(&split)
+        .unwrap()
+        .split(":")
+        .map(|c: &str| c.to_string())
+        .collect()
+}
+
+async fn validate_client(client_authorization: String, client: &Client) -> i32 {
+    let client_credentials = decode_client_auth(client_authorization);
+    let client_db_id = db::validate_client_credentials(
+        &client,
+        client_credentials[0].to_string(),
+        client_credentials[1].to_string(),
+    )
+    .await;
+
+    client_db_id
 }
 
 // Introspect a token
-async fn introspect_token(client_authorization: String, access_token: String, db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
+async fn introspect_token(
+    client_authorization: String,
+    access_token: String,
+    db_pool: deadpool_postgres::Pool,
+) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
-    let client_credentials = decode_client_auth(client_authorization);
-    let client_db_id = db::validate_client_credentials(&client, client_credentials[0].to_string(), client_credentials[1].to_string()).await;
+    let client_db_id = validate_client(client_authorization, &client).await;
     if client_db_id == 0 {
-        return Err(warp::reject::not_found())
+        return Err(warp::reject::not_found());
     }
-    let result = db::validate_access_token(&client, access_token, client_credentials[0].clone());
+    let result = db::validate_access_token(&client, access_token, client_db_id);
 
     Ok(json(&result.await))
 }
 
 // Request an access token
-async fn get_access_token(params: Option<TokenParams>, client_authorization: String, db_pool: deadpool_postgres::Pool, server_config: ServerConfig) -> std::result::Result<impl Reply, Rejection> {
+async fn get_access_token(
+    params: Option<TokenParams>,
+    client_authorization: String,
+    db_pool: deadpool_postgres::Pool,
+    server_config: ServerConfig,
+) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
     if client_authorization.is_empty() {
-        return  Err(warp::reject::not_found())
+        return Err(warp::reject::not_found());
     }
 
     match params {
-        Some(obj) => {
-            match obj.grant_type.as_str() {
-                "password" => {
-                    if obj.username.is_some() && obj.password.is_some() {
-                        let client_credentials = decode_client_auth(client_authorization);
-                        let client_db_id = db::validate_client_credentials(&client, client_credentials[0].to_string(), client_credentials[1].to_string()).await;
-                        let validation = db::validate_password_credentials(&client, obj.username.unwrap(), obj.password.unwrap()).await;
-                        if validation > 0 && client_db_id > 0{
-                            let token = generate_token();
-                            let res = db::insert_token(&client, token.clone(), obj.scope, Some(validation), client_db_id, server_config.name).await;
-                            return Ok(json(&res))
-                        } else {
-                            return Err(warp::reject::not_found())
-                        }
-                    }
-                },
-                "client_credentials" => {
-                    let client_credentials = decode_client_auth(client_authorization);
-                    let client_db_id = db::validate_client_credentials(&client, client_credentials[0].to_string(), client_credentials[1].to_string()).await;
-                    if client_db_id > 0 {
+        Some(obj) => match obj.grant_type.as_str() {
+            "password" => {
+                if obj.username.is_some() && obj.password.is_some() {
+                    let client_db_id = validate_client(client_authorization, &client).await;
+                    let validation = db::validate_password_credentials(
+                        &client,
+                        obj.username.unwrap(),
+                        obj.password.unwrap(),
+                    )
+                    .await;
+                    if validation > 0 && client_db_id > 0 {
                         let token = generate_token();
-                        let res = db::insert_token(&client, token.clone(), obj.scope, None, client_db_id, server_config.name).await;
-                        return Ok(json(&res))
+                        let res = db::insert_token(
+                            &client,
+                            token.clone(),
+                            obj.scope,
+                            Some(validation),
+                            client_db_id,
+                            server_config.name,
+                        )
+                        .await;
+                        return Ok(json(&res));
                     } else {
-                        return Err(warp::reject::not_found())
+                        return Err(warp::reject::not_found());
                     }
-                },
-                _ => {
-
                 }
             }
-        }
-        None => {
-        }
+            "client_credentials" => {
+                let client_db_id = validate_client(client_authorization, &client).await;
+                if client_db_id > 0 {
+                    let token = generate_token();
+                    let res = db::insert_token(
+                        &client,
+                        token.clone(),
+                        obj.scope,
+                        None,
+                        client_db_id,
+                        server_config.name,
+                    )
+                    .await;
+                    return Ok(json(&res));
+                } else {
+                    return Err(warp::reject::not_found());
+                }
+            }
+            _ => {}
+        },
+        None => {}
     }
 
-    return Err(warp::reject::not_found())
+    return Err(warp::reject::not_found());
 }
 
-async fn create_user(db_pool: deadpool_postgres::Pool) -> std::result::Result<impl Reply, Rejection> {
-
+async fn create_user(
+    db_pool: deadpool_postgres::Pool,
+) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
 }
 
-fn with_db(db_pool: deadpool_postgres::Pool) -> impl Filter<Extract = (deadpool_postgres::Pool,), Error = Infallible> + Clone {
+fn with_db(
+    db_pool: deadpool_postgres::Pool,
+) -> impl Filter<Extract = (deadpool_postgres::Pool,), Error = Infallible> + Clone {
     warp::any().map(move || db_pool.clone())
 }
 
-fn with_config(config: Config) -> impl Filter<Extract = (crate::models::ServerConfig,), Error = Infallible> + Clone {
+fn with_config(
+    config: Config,
+) -> impl Filter<Extract = (crate::models::ServerConfig,), Error = Infallible> + Clone {
     warp::any().map(move || config.server.clone())
 }
 
-
 async fn custom_errors(err: Rejection) -> Result<impl Reply, Rejection> {
     if err.is_not_found() {
-        return Ok(Response::builder().status(StatusCode::UNAUTHORIZED).body("Invalid credentials"))
+        return Ok(Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body("Invalid credentials"));
     } else {
-        return Ok(Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body("Something went wrong..."))
+        return Ok(Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body("Something went wrong..."));
     }
 }
 
@@ -124,9 +165,14 @@ async fn main() {
     let config: Config = crate::models::Config::from_env().unwrap();
     let pool = config.pg.create_pool(NoTls).unwrap();
 
-    println!("Starting oauth server on http://{}:{}/", config.server.host, config.server.port);
+    println!(
+        "Starting oauth server on http://{}:{}/",
+        config.server.host, config.server.port
+    );
 
-    let auth = warp::header::<String>("Authorization").or(warp::any().map(|| String::new())).unify();
+    let auth = warp::header::<String>("Authorization")
+        .or(warp::any().map(|| String::new()))
+        .unify();
 
     // TODO betere manier om te falen
     let introspect_body = warp::body::form()
@@ -134,20 +180,18 @@ async fn main() {
 
     let token_body = warp::body::form().map(|form: TokenParams| Some(form));
 
-    let opt_query = warp::query::<TokenParams>()
-        .map(Some)
-        .or_else(|_| async { Ok::<(Option<TokenParams>,), std::convert::Infallible>((None,)) });
-
     let oauth_route = warp::post().and(warp::path("oauth2"));
 
-    let introspect_route = oauth_route 
+    let introspect_route = oauth_route
         .and(warp::path("introspect"))
         .and(auth)
         .and(introspect_body)
         .and(with_db(pool.clone()))
         .and_then(introspect_token);
 
-    let logout_route = warp::post().and(warp::path("oauth2")).and(warp::path("logout"));
+    let logout_route = warp::post()
+        .and(warp::path("oauth2"))
+        .and(warp::path("logout"));
 
     let token_route = oauth_route
         .and(warp::path("token"))
@@ -164,5 +208,4 @@ async fn main() {
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);
 
     warp::serve(routes).run(adrr).await
-
 }
