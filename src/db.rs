@@ -1,23 +1,7 @@
 use crate::models::{AccessToken, Introspection, User};
 use chrono::{DateTime, Duration, Local};
 use deadpool_postgres::Client;
-use std::io;
 use tokio_pg_mapper::FromTokioPostgresRow;
-
-pub async fn get_users(client: &Client) -> Result<Vec<User>, io::Error> {
-    let statement = client.prepare("select * from users").await.unwrap();
-
-    // (query, parameterlist)
-    let users = client
-        .query(&statement, &[])
-        .await
-        .expect("Error executing query on users table")
-        .iter()
-        .map(|row| User::from_row_ref(row).unwrap())
-        .collect::<Vec<User>>();
-
-    Ok(users)
-}
 
 // validate in 1 go?
 pub async fn validate_access_token(

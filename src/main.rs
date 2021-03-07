@@ -1,138 +1,15 @@
 mod db;
 mod models;
+mod handlers;
 
 use crate::models::{Config, TokenParams};
-use deadpool_postgres::Client;
 use dotenv::dotenv;
-use models::ServerConfig;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddrV4};
-use std::str;
 use tokio_postgres::NoTls;
+use std::collections::HashMap;
 use warp::http::Response;
-use warp::{hyper::StatusCode, reply::json, Filter, Rejection, Reply};
-
-fn generate_token() -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(128)
-        .map(char::from)
-        .collect()
-}
-
-fn decode_client_auth(client_authorization: String) -> Vec<String> {
-    let f1: Vec<&str> = client_authorization.split(" ").collect();
-    let split = base64::decode(f1[1]).unwrap();
-    str::from_utf8(&split)
-        .unwrap()
-        .split(":")
-        .map(|c: &str| c.to_string())
-        .collect()
-}
-
-async fn validate_client(client_authorization: String, client: &Client) -> i32 {
-    let client_credentials = decode_client_auth(client_authorization);
-    let client_db_id = db::validate_client_credentials(
-        &client,
-        client_credentials[0].to_string(),
-        client_credentials[1].to_string(),
-    )
-    .await;
-
-    client_db_id
-}
-
-// Introspect a token
-async fn introspect_token(
-    client_authorization: String,
-    access_token: String,
-    db_pool: deadpool_postgres::Pool,
-) -> std::result::Result<impl Reply, Rejection> {
-    let client: Client = db_pool.get().await.expect("Error connecting to database");
-    let client_db_id = validate_client(client_authorization, &client).await;
-    if client_db_id == 0 {
-        return Err(warp::reject::not_found());
-    }
-    let result = db::validate_access_token(&client, access_token, client_db_id);
-
-    Ok(json(&result.await))
-}
-
-// Request an access token
-async fn get_access_token(
-    params: Option<TokenParams>,
-    client_authorization: String,
-    db_pool: deadpool_postgres::Pool,
-    server_config: ServerConfig,
-) -> std::result::Result<impl Reply, Rejection> {
-    let client: Client = db_pool.get().await.expect("Error connecting to database");
-
-    if client_authorization.is_empty() {
-        return Err(warp::reject::not_found());
-    }
-
-    match params {
-        Some(obj) => match obj.grant_type.as_str() {
-            "password" => {
-                if obj.username.is_some() && obj.password.is_some() {
-                    let client_db_id = validate_client(client_authorization, &client).await;
-                    let validation = db::validate_password_credentials(
-                        &client,
-                        obj.username.unwrap(),
-                        obj.password.unwrap(),
-                    )
-                    .await;
-                    if validation > 0 && client_db_id > 0 {
-                        let token = generate_token();
-                        let res = db::insert_token(
-                            &client,
-                            token.clone(),
-                            obj.scope,
-                            Some(validation),
-                            client_db_id,
-                            server_config.name,
-                        )
-                        .await;
-                        return Ok(json(&res));
-                    } else {
-                        return Err(warp::reject::not_found());
-                    }
-                }
-            }
-            "client_credentials" => {
-                let client_db_id = validate_client(client_authorization, &client).await;
-                if client_db_id > 0 {
-                    let token = generate_token();
-                    let res = db::insert_token(
-                        &client,
-                        token.clone(),
-                        obj.scope,
-                        None,
-                        client_db_id,
-                        server_config.name,
-                    )
-                    .await;
-                    return Ok(json(&res));
-                } else {
-                    return Err(warp::reject::not_found());
-                }
-            }
-            _ => {}
-        },
-        None => {}
-    }
-
-    return Err(warp::reject::not_found());
-}
-
-async fn create_user(
-    db_pool: deadpool_postgres::Pool,
-) -> std::result::Result<impl Reply, Rejection> {
-    Ok("")
-}
+use warp::{hyper::StatusCode, Filter, Rejection, Reply};
 
 fn with_db(
     db_pool: deadpool_postgres::Pool,
@@ -174,7 +51,6 @@ async fn main() {
         .or(warp::any().map(|| String::new()))
         .unify();
 
-    // TODO betere manier om te falen
     let introspect_body = warp::body::form()
         .map(|form: HashMap<String, String>| form.get("token").unwrap().to_string());
 
@@ -187,11 +63,12 @@ async fn main() {
         .and(auth)
         .and(introspect_body)
         .and(with_db(pool.clone()))
-        .and_then(introspect_token);
+        .and_then(handlers::introspect_token);
 
-    let logout_route = warp::post()
-        .and(warp::path("oauth2"))
-        .and(warp::path("logout"));
+    let logout_route = oauth_route
+        .and(warp::path("logout"))
+        .and(with_db(pool.clone()))
+        .and_then(handlers::invalidate_token);
 
     let token_route = oauth_route
         .and(warp::path("token"))
@@ -199,10 +76,10 @@ async fn main() {
         .and(auth)
         .and(with_db(pool.clone()))
         .and(with_config(config.clone()))
-        .and_then(get_access_token)
+        .and_then(handlers::get_access_token)
         .recover(custom_errors);
 
-    let routes = warp::post().and(introspect_route.or(token_route));
+    let routes = warp::post().and(introspect_route.or(token_route).or(logout_route));
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);
