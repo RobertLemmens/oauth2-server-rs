@@ -5,6 +5,7 @@ use warp::{reply::json, Rejection, Reply};
 use std::str;
 use crate::models::{ServerConfig, TokenParams};
 use crate::db;
+use crate::errors::Error::*;
 
 fn generate_token() -> String {
     rand::thread_rng()
@@ -62,7 +63,7 @@ pub async fn get_access_token(
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
     if client_authorization.is_empty() {
-        return Err(warp::reject::not_found());
+        return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
     }
 
     match params {
@@ -89,7 +90,7 @@ pub async fn get_access_token(
                         .await;
                         return Ok(json(&res));
                     } else {
-                        return Err(warp::reject::not_found());
+                        return Err(warp::reject::custom(AuthorizationError("client or user not found".to_string())));
                     }
                 }
             }
@@ -108,10 +109,12 @@ pub async fn get_access_token(
                     .await;
                     return Ok(json(&res));
                 } else {
-                    return Err(warp::reject::not_found());
+                    return Err(warp::reject::custom(AuthorizationError("client id not found".to_string())));
                 }
             }
-            _ => {}
+            _ => {
+                return Err(warp::reject::custom(AuthorizationError("Unsupported grant type".to_string())));
+            }
         },
         None => {}
     }
@@ -121,12 +124,12 @@ pub async fn get_access_token(
 
 pub async fn invalidate_token(
     db_pool: deadpool_postgres::Pool,
-) -> std::result::Result<impl Reply, Rejection> {
+    ) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
 }
 
 pub async fn create_user(
     db_pool: deadpool_postgres::Pool,
-) -> std::result::Result<impl Reply, Rejection> {
+    ) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
 }

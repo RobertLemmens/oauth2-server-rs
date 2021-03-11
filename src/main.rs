@@ -1,6 +1,7 @@
 mod db;
 mod models;
 mod handlers;
+mod errors;
 
 use crate::models::{Config, TokenParams};
 use dotenv::dotenv;
@@ -21,18 +22,6 @@ fn with_config(
     config: Config,
 ) -> impl Filter<Extract = (crate::models::ServerConfig,), Error = Infallible> + Clone {
     warp::any().map(move || config.server.clone())
-}
-
-async fn custom_errors(err: Rejection) -> Result<impl Reply, Rejection> {
-    if err.is_not_found() {
-        return Ok(Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body("Invalid credentials"));
-    } else {
-        return Ok(Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body("Something went wrong..."));
-    }
 }
 
 #[tokio::main]
@@ -76,10 +65,9 @@ async fn main() {
         .and(auth)
         .and(with_db(pool.clone()))
         .and(with_config(config.clone()))
-        .and_then(handlers::get_access_token)
-        .recover(custom_errors);
+        .and_then(handlers::get_access_token);
 
-    let routes = warp::post().and(introspect_route.or(token_route).or(logout_route));
+    let routes = warp::post().and(introspect_route.or(token_route).or(logout_route).recover(errors::handle_rejection));
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);
