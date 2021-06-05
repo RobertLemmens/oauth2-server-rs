@@ -34,7 +34,7 @@ ingress:
 
 environment:
 - name: SERVER.PORT
-  value: 8080
+  value: "8080"
 - name: SERVER.HOST
   value: 0.0.0.0
 - name: SERVER.NAME
@@ -46,11 +46,11 @@ environment:
 - name: PG.HOST
   value: postgres
 - name: PG.PORT
-  value: 5432
+  value: "5432"
 - name: PG.DBNAME
   value: postgres
 - name: PG.POOL.MAX_SIZE
-  value: 30 
+  value: "30"
 
 resources: 
   limits:
