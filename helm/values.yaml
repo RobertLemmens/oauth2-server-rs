@@ -1,4 +1,4 @@
-# Default values for oauth2-server-rs.
+# Default values for ..
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -10,53 +10,17 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
-podAnnotations: {}
-
 service:
   type: ClusterIP
-  port: 8080
+  port: 80
 
 ingress:
   enabled: true
-  # className: ""
   annotations: 
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  secretName: oauth2-tls
-  host: chart.example.local
-
-env:
-- name: SERVER.PORT
-  value: "8080"
-- name: SERVER.HOST
-  value: 0.0.0.0
-- name: SERVER.NAME
-  value: tokenissuer.com
-- name: PG.USER
-  value: postgres
-- name: PG.PASSWORD
-  value: postgress
-- name: PG.HOST
-  value: postgres
-- name: PG.PORT
-  value: "5432"
-- name: PG.DBNAME
-  value: postgres
-- name: PG.POOL.MAX_SIZE
-  value: "30"
-
-resources: 
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
+    - host: oauth2.codebulb.nl
 
 autoscaling:
   enabled: false
@@ -64,9 +28,3 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}

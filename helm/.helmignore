@@ -21,3 +21,12 @@
 .idea/
 *.tmproj
 .vscode/
+target/*
+*.jar
+backend/*
+frontend/*
+project/*
+shared/*
+*.sbt
+*.md
+Dockerfile
