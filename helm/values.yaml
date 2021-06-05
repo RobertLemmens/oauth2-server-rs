@@ -27,10 +27,8 @@ ingress:
       paths:
         - path: /
           pathType: ImplementationSpecific
-  tls: 
-   - secretName: oauth2-tls
-     hosts:
-       - chart-example.local
+  secretName: oauth2-tls
+  host: chart.example.local
 
 env:
 - name: SERVER.PORT
