@@ -38,14 +38,6 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          livenessProbe:
-            httpPost:
-              path: /q/health
-              port: 8080
-          readinessProbe:
-            httpPost:
-              path: /q/health
-              port: 8080
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
