@@ -50,7 +50,10 @@ pub async fn introspect_token(
     }
     let result = db::validate_access_token(&client, access_token, client_db_id);
 
-    Ok(json(&result.await))
+    match result.await {
+        None => return Err(warp::reject::not_found()),
+        Some(x) => return Ok(json(&x)),
+    }
 }
 
 // Request an access token
@@ -126,6 +129,10 @@ pub async fn invalidate_token(
     db_pool: deadpool_postgres::Pool,
     ) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
+}
+
+pub async fn get_health() -> std::result::Result<impl Reply, Rejection> {
+    Ok(warp::reply::json(&"UP"))
 }
 
 pub async fn create_user(

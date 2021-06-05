@@ -67,7 +67,9 @@ async fn main() {
         .and(with_config(config.clone()))
         .and_then(handlers::get_access_token);
 
-    let routes = warp::post().and(introspect_route.or(token_route).or(logout_route).recover(errors::handle_rejection));
+    let health_route = warp::post().and(warp::path("q")).and(warp::path("health")).and(warp::path::end()).and_then(handlers::get_health);
+
+    let routes = health_route.or(introspect_route).or(token_route).or(logout_route).recover(errors::handle_rejection);
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), config.server.port);

@@ -8,7 +8,7 @@ pub async fn validate_access_token(
     client: &Client,
     access_token: String,
     client_db_id: i32,
-) -> Introspection {
+) -> Option<Introspection> {
     let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, b.client_id, b.display_name, a.token_type, a.issuer 
                                    from access_tokens as a join clients as b on a.client_id = b.id left join users as c on a.user_id = c.id 
                                    where a.access_token = $1 and b.id = $2").await.unwrap();
@@ -16,6 +16,12 @@ pub async fn validate_access_token(
         .query(&statement, &[&access_token, &client_db_id])
         .await
         .expect("Error executing query on access token/clients table");
+
+    //TODO check if response is not empty
+
+    if response.is_empty() {
+        return None;
+    }
 
     let expire_time: DateTime<Local> = response[0].get(1);
     let is_active = if expire_time < Local::now() {
@@ -26,7 +32,7 @@ pub async fn validate_access_token(
 
     let creation_time: DateTime<Local> = response[0].get(2);
 
-    Introspection {
+    return Some(Introspection {
         active: is_active,
         client_id: response[0].get(4),
         username: response[0].get(3),
@@ -35,7 +41,7 @@ pub async fn validate_access_token(
         issuer: response[0].get(7),
         exp: expire_time.timestamp(),
         iat: creation_time.timestamp(),
-    }
+    })
 }
 
 pub async fn validate_password_credentials(

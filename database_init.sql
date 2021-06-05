@@ -14,8 +14,8 @@ create table clients (
 create table access_tokens (
   id serial primary key,
   access_token varchar(128) not null,
-  expire_time timestamp not null,
-  creation_time timestamp not null,
+  expire_time timestamp with time zone not null,
+  creation_time timestamp with time zone not null,
   scope varchar(255),
   token_type varchar(50) not null,
   user_id integer,
