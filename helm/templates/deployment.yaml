@@ -22,6 +22,25 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: SERVER.NAME
+            value: tokenissuer.nl
+          - name: SERVER.PORT
+            value: "8080"
+          - name: SERVER.HOST
+            value: "0.0.0.0"
+          - name: PG.HOST
+            value: postgres
+          - name: PG.PORT
+            value: "5432"
+          - name: PG.USER
+            value: postgres
+          - name: PG.PASSWORD
+            value: postgres
+          - name: PG.DBNAME
+            value: postgres
+          - name: PG.POOL.MAX_SIZE
+            value: "30"
           ports:
             - name: http
               containerPort: 8080
