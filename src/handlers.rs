@@ -43,15 +43,18 @@ pub async fn introspect_token(
     access_token: String,
     db_pool: deadpool_postgres::Pool,
 ) -> std::result::Result<impl Reply, Rejection> {
+    println!("Introspecting");
     let client: Client = db_pool.get().await.expect("Error connecting to database");
     let client_db_id = validate_client(client_authorization, &client).await;
     if client_db_id == 0 {
-        return Err(warp::reject::not_found());
+        println!("Returning error");
+        return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
     }
     let result = db::validate_access_token(&client, access_token, client_db_id);
 
+
     match result.await {
-        None => return Err(warp::reject::not_found()),
+        None => return Err(warp::reject::custom(NotFoundError("Unknown token".to_string()))),
         Some(x) => return Ok(json(&x)),
     }
 }

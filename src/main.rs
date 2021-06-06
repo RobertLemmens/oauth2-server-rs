@@ -59,6 +59,7 @@ async fn main() {
 
     let introspect_route = oauth_route
         .and(warp::path("introspect"))
+        .and(warp::path::end())
         .and(auth)
         .and(introspect_body)
         .and(with_db(pool.clone()))
@@ -66,18 +67,25 @@ async fn main() {
 
     let logout_route = oauth_route
         .and(warp::path("logout"))
+        .and(warp::path::end())
         .and(with_db(pool.clone()))
         .and_then(handlers::invalidate_token);
 
     let token_route = oauth_route
         .and(warp::path("token"))
+        .and(warp::path::end())
         .and(token_body)
         .and(auth)
         .and(with_db(pool.clone()))
         .and(with_config(config.clone()))
         .and_then(handlers::get_access_token);
 
-    let health_route = warp::post().and(warp::path("q")).and(warp::path("health")).and(warp::path::end()).and_then(handlers::get_health);
+    let health_route = warp::get()
+        .and(warp::path("q"))
+        .and(warp::path("health"))
+        .and(warp::path::end())
+        .and_then(handlers::get_health)
+        .recover(errors::handle_get_notallowed);
 
     let routes = health_route.or(introspect_route).or(token_route).or(logout_route).recover(errors::handle_rejection);
 

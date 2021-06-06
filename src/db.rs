@@ -89,7 +89,12 @@ pub async fn validate_client_credentials(
 }
 
 pub async fn create_tables(client: &Client, script: &str) {
-    client.batch_execute(script).await.unwrap();
+    let res = client.batch_execute(script).await;
+
+    match res {
+        Ok(_) => println!("Database created"),
+        Err(msg) => println!("Error creating database, continuing startup. Message: ${0}", msg)
+    };
 }
 
 pub async fn insert_token(
