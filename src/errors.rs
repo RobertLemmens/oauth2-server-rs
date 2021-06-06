@@ -26,6 +26,7 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
     let code;
     let message;
 
+    // TODO catch method not allowed and other common http errors
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
         message = "Not Found";
@@ -40,7 +41,8 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
                 message = "Unauthorized"; 
             }
         }
-    } else {
+    }
+    else {
         eprintln!("unhandled error: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "Internal Server Error";

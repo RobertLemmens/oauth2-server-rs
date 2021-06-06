@@ -4,3 +4,11 @@ description: oauth2-server-rs helm deployment chart
 type: application
 version: 0.1.0
 appVersion: "latest"
+
+
+dependencies:
+  - name: postgresql
+    version: 10.4.9
+    repository: https://charts.bitnami.com/bitnami
+    alias: postgresql
+
