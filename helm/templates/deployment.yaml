@@ -42,7 +42,7 @@ spec:
           - name: PG.POOL.MAX_SIZE
             value: "30"
           - name: BOOTSTRAP
-            value: true
+            value: "true"
           ports:
             - name: http
               containerPort: 8080
