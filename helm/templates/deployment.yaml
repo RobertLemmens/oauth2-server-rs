@@ -30,7 +30,7 @@ spec:
           - name: SERVER.HOST
             value: "0.0.0.0"
           - name: PG.HOST
-            value: postgres
+            value: oauth2-rs-postgresql
           - name: PG.PORT
             value: "5432"
           - name: PG.USER
