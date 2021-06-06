@@ -53,6 +53,7 @@ pub struct ServerConfig {
 #[derive(Deserialize, Clone)]
 pub struct Config {
     pub server: ServerConfig,
+    pub bootstrap: bool,
     pub pg: deadpool_postgres::Config,
 }
 

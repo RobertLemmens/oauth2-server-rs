@@ -88,6 +88,10 @@ pub async fn validate_client_credentials(
     }
 }
 
+pub async fn create_tables(client: &Client, script: &str) {
+    client.batch_execute(script).await.unwrap();
+}
+
 pub async fn insert_token(
     client: &Client,
     generated_token: String,

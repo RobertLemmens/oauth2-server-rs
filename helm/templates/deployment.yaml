@@ -41,6 +41,8 @@ spec:
             value: postgres
           - name: PG.POOL.MAX_SIZE
             value: "30"
+          - name: BOOTSTRAP
+            value: true
           ports:
             - name: http
               containerPort: 8080

@@ -5,9 +5,12 @@ mod errors;
 
 use crate::models::{Config, TokenParams};
 use dotenv::dotenv;
+use crate::db::*;
 use std::convert::Infallible;
+use std::fs;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use tokio_postgres::NoTls;
+use deadpool_postgres::Client;
 use std::collections::HashMap;
 use warp::http::Response;
 use warp::{hyper::StatusCode, Filter, Rejection, Reply};
@@ -30,6 +33,13 @@ async fn main() {
 
     let config: Config = crate::models::Config::from_env().unwrap();
     let pool = config.pg.create_pool(NoTls).unwrap();
+
+    if config.bootstrap {
+        println!("Bootstrapping postgresql database...");
+        let client: Client = pool.get().await.expect("Error connecting to database");
+        let file = fs::read_to_string("database_init.sql").expect("Could not load bootstrap script. The bootstrap script should be in the root of the run context");
+        db::create_tables(&client, file.as_str()).await;
+    }
 
     println!(
         "Starting oauth server on http://{}:{}/",
