@@ -28,11 +28,9 @@ impl warp::reject::Reject for Error {}
 
 pub async fn handle_get_notallowed(err: Rejection) -> std::result::Result<impl Reply, Rejection> {
     if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
-        println!("get throwed not allowed");
         return Err(warp::reject::custom(Error::GetRouteFailed(false)));
         // return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
     }
-    println!("got err, but returning ok");
     Ok("")
     // Err(err)
 }
@@ -40,15 +38,12 @@ pub async fn handle_get_notallowed(err: Rejection) -> std::result::Result<impl R
 pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
     let code;
     let message;
-    println!("Big rejection handler");
 
     // TODO catch method not allowed and other common http errors
     if err.is_not_found() {
-        println!("The error is not fuond..");
         code = StatusCode::NOT_FOUND;
         message = "Not Found";
     } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
-        println!("The error is not method not allowed..");
         code = StatusCode::NOT_FOUND;
         message = "Not Found";
     }
