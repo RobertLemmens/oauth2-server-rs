@@ -1,18 +1,17 @@
 mod db;
-mod errors;
-mod handlers;
 mod models;
-mod response;
+mod handlers;
+mod errors;
 
-use crate::db::*;
-use crate::models::{AuthorizationParams, Config, TokenParams};
-use deadpool_postgres::Client;
+use crate::models::{Config, TokenParams};
 use dotenv::dotenv;
-use std::collections::HashMap;
+use crate::db::*;
 use std::convert::Infallible;
 use std::fs;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use tokio_postgres::NoTls;
+use deadpool_postgres::Client;
+use std::collections::HashMap;
 use warp::http::Response;
 use warp::{hyper::StatusCode, Filter, Rejection, Reply};
 
@@ -56,13 +55,7 @@ async fn main() {
 
     let token_body = warp::body::form().map(|form: TokenParams| Some(form));
 
-    let authorization_params = warp::query().map(|params: AuthorizationParams| {
-        println!("Mappiong params");
-        params
-    });
-
     let oauth_route = warp::post().and(warp::path("oauth2"));
-    let oauth_get_route = warp::get().and(warp::path("oauth2"));
 
     let introspect_route = oauth_route
         .and(warp::path("introspect"))
@@ -77,13 +70,6 @@ async fn main() {
         .and(warp::path::end())
         .and(with_db(pool.clone()))
         .and_then(handlers::invalidate_token);
-
-    let authorize_route = oauth_get_route
-        .and(warp::path("authorize"))
-        .and(warp::path::end())
-        .and(authorization_params)
-        .and(with_db(pool.clone()))
-        .and_then(handlers::get_authorization);
 
     let token_route = oauth_route
         .and(warp::path("token"))
@@ -101,12 +87,7 @@ async fn main() {
         .and_then(handlers::get_health)
         .recover(errors::handle_get_notallowed);
 
-    let routes = authorize_route
-        .or(health_route)
-        .or(introspect_route)
-        .or(token_route)
-        .or(logout_route)
-        .recover(errors::handle_rejection);
+    let routes = health_route.or(introspect_route).or(token_route).or(logout_route).recover(errors::handle_rejection);
 
     // TODO regel een from_string voor het adres
     let adrr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), config.server.port);

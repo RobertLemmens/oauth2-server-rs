@@ -14,6 +14,15 @@ pub struct TokenParams {
     pub refresh_token: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct AuthorizationParams {
+    pub client_id: String,
+    pub response_type: String,
+    pub redirect_uri: String,
+    pub scope: String,
+    pub state: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, PostgresMapper)]
 #[pg_mapper(table = "users")]
 pub struct User {

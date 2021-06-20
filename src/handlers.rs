@@ -1,11 +1,14 @@
+use crate::db;
+use crate::errors::Error::*;
+use crate::models::{AuthorizationParams, ServerConfig, TokenParams};
+use crate::response::Response;
 use deadpool_postgres::Client;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use warp::{reply::json, Rejection, Reply};
 use std::str;
-use crate::models::{ServerConfig, TokenParams};
-use crate::db;
-use crate::errors::Error::*;
+use std::str::FromStr;
+use warp::http::Uri;
+use warp::{reply::json, Rejection, Reply};
 
 fn generate_token() -> String {
     rand::thread_rng()
@@ -46,15 +49,35 @@ pub async fn introspect_token(
     let client: Client = db_pool.get().await.expect("Error connecting to database");
     let client_db_id = validate_client(client_authorization, &client).await;
     if client_db_id == 0 {
-        return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
+        return Err(warp::reject::custom(AuthorizationError(
+            "Client credentials invalid".to_string(),
+        )));
     }
     let result = db::validate_access_token(&client, access_token, client_db_id);
 
-
     match result.await {
-        None => return Err(warp::reject::custom(NotFoundError("Unknown token".to_string()))),
+        None => {
+            return Err(warp::reject::custom(NotFoundError(
+                "Unknown token".to_string(),
+            )))
+        }
         Some(x) => return Ok(json(&x)),
     }
+}
+
+pub async fn get_authorization(
+    authorization_params: AuthorizationParams,
+    db_pool: deadpool_postgres::Pool,
+) -> std::result::Result<impl Reply, Rejection> {
+    println!("Redirecting to login page");
+    let url = format!(
+        "http://localhost:8082/auth?client_id={}&response_type={}&redirect_uri={}&scope={}",
+        authorization_params.client_id,
+        authorization_params.response_type,
+        authorization_params.redirect_uri,
+        authorization_params.scope
+    );
+    Ok(warp::redirect(Uri::from_str(&url).unwrap()))
 }
 
 // Request an access token
@@ -67,7 +90,9 @@ pub async fn get_access_token(
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
     if client_authorization.is_empty() {
-        return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
+        return Err(warp::reject::custom(AuthorizationError(
+            "Client credentials invalid".to_string(),
+        )));
     }
 
     match params {
@@ -94,7 +119,9 @@ pub async fn get_access_token(
                         .await;
                         return Ok(json(&res));
                     } else {
-                        return Err(warp::reject::custom(AuthorizationError("client or user not found".to_string())));
+                        return Err(warp::reject::custom(AuthorizationError(
+                            "client or user not found".to_string(),
+                        )));
                     }
                 }
             }
@@ -113,11 +140,15 @@ pub async fn get_access_token(
                     .await;
                     return Ok(json(&res));
                 } else {
-                    return Err(warp::reject::custom(AuthorizationError("client id not found".to_string())));
+                    return Err(warp::reject::custom(AuthorizationError(
+                        "client id not found".to_string(),
+                    )));
                 }
             }
             _ => {
-                return Err(warp::reject::custom(AuthorizationError("Unsupported grant type".to_string())));
+                return Err(warp::reject::custom(AuthorizationError(
+                    "Unsupported grant type".to_string(),
+                )));
             }
         },
         None => {}
@@ -128,7 +159,7 @@ pub async fn get_access_token(
 
 pub async fn invalidate_token(
     db_pool: deadpool_postgres::Pool,
-    ) -> std::result::Result<impl Reply, Rejection> {
+) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
 }
 
@@ -138,6 +169,6 @@ pub async fn get_health() -> std::result::Result<impl Reply, Rejection> {
 
 pub async fn create_user(
     db_pool: deadpool_postgres::Pool,
-    ) -> std::result::Result<impl Reply, Rejection> {
+) -> std::result::Result<impl Reply, Rejection> {
     Ok("")
 }

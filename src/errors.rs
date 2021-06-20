@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::convert::Infallible;
-use warp::{http::StatusCode, Rejection, Reply};
 use thiserror::Error;
+use warp::{http::StatusCode, Rejection, Reply};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -27,11 +27,22 @@ struct ErrorResponse {
 impl warp::reject::Reject for Error {}
 
 pub async fn handle_get_notallowed(err: Rejection) -> std::result::Result<impl Reply, Rejection> {
+    println!("{:?}", err);
     if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
         return Err(warp::reject::custom(Error::GetRouteFailed(false)));
         // return Err(warp::reject::custom(AuthorizationError("Client credentials invalid".to_string())));
+    } else if err.is_not_found() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&ErrorResponse {
+                message: "Not Found".into(),
+            }),
+            StatusCode::NOT_FOUND,
+        ));
     }
-    Ok("")
+    Ok(warp::reply::with_status(
+        warp::reply::json(&""),
+        StatusCode::OK,
+    ))
     // Err(err)
 }
 
@@ -39,20 +50,21 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
     let code;
     let message;
 
-    // TODO catch method not allowed and other common http errors
+    println!("{:?}", err);
+
+    // else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+    //         code = StatusCode::NOT_FOUND; // this should be a 405...?
+    //         message = "Not Found";
+    //     }
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
         message = "Not Found";
-    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
-        code = StatusCode::NOT_FOUND;
-        message = "Not Found";
-    }
-    else if let Some(e) = err.find::<Error>() {
+    } else if let Some(e) = err.find::<Error>() {
         println!("${0}", e);
         match e {
             Error::AuthorizationError(e) => {
                 code = StatusCode::UNAUTHORIZED;
-                message = e; 
+                message = e;
             }
             Error::NotFoundError(e) => {
                 code = StatusCode::NOT_FOUND;
@@ -64,17 +76,18 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             }
             _ => {
                 code = StatusCode::UNAUTHORIZED;
-                message = "Unauthorized"; 
+                message = "Unauthorized";
             }
         }
-    }
-    else {
+    } else {
         eprintln!("unhandled error: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "Internal Server Error";
     }
 
-    let json = warp::reply::json(&ErrorResponse { message: message.into(), });
+    let json = warp::reply::json(&ErrorResponse {
+        message: message.into(),
+    });
 
     Ok(warp::reply::with_status(json, code))
 }
