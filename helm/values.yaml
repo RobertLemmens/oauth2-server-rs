@@ -29,8 +29,3 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
   #
-global:
-  postgresql:
-    postgresqlUsername: postgres
-    postgresqlPassword: postgres
-    postgresqlDatabase: postgres
