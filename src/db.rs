@@ -88,6 +88,37 @@ pub async fn validate_client_credentials(
     }
 }
 
+pub async fn validate_code(client: &Client, code: &String) -> i32 {
+    let statement = client
+        .prepare("select * from authorization_codes where code = $1")
+        .await
+        .unwrap();
+
+    let code_response = client
+        .query(&statement, &[&code])
+        .await
+        .expect("Error executing query on authorization_codes table");
+
+    if code_response.len() == 1 {
+        // TODO check tijd op token
+        return code_response.get(0).unwrap().get(2);
+    } else {
+        return 0;
+    }
+}
+
+pub async fn delete_code(client: &Client, code: &String) {
+    let statement = client
+        .prepare("delete from authorization_codes where code = $1")
+        .await
+        .unwrap();
+
+    let code_response = client
+        .query(&statement, &[&code])
+        .await
+        .expect("Error deleting query on authorization_codes table");
+}
+
 pub async fn create_tables(client: &Client, script: &str) {
     let res = client.batch_execute(script).await;
 

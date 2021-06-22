@@ -11,6 +11,7 @@ pub struct TokenParams {
     pub grant_type: String,
     pub redirect_uri: Option<String>,
     pub scope: Option<String>,
+    pub code: Option<String>,
     pub refresh_token: Option<String>,
 }
 

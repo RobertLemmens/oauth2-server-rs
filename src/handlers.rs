@@ -40,6 +40,12 @@ pub async fn validate_client(client_authorization: String, client: &Client) -> i
     client_db_id
 }
 
+// Returns the user id if valid, 0 if invalid
+pub async fn validate_code(client: &Client, code: &String) -> i32 {
+    let user_id = db::validate_code(&client, code).await;
+    user_id
+}
+
 // Introspect a token
 pub async fn introspect_token(
     client_authorization: String,
@@ -142,6 +148,29 @@ pub async fn get_access_token(
                 } else {
                     return Err(warp::reject::custom(AuthorizationError(
                         "client id not found".to_string(),
+                    )));
+                }
+            }
+            "authorization_code" => {
+                let client_db_id = validate_client(client_authorization, &client).await; //TODO support voor PCKE ipv client_secret hier
+                let code = obj.code.unwrap();
+                let user_id = validate_code(&client, &code).await;
+                if client_db_id > 0 && user_id > 0 {
+                    let token = generate_token();
+                    let res = db::insert_token(
+                        &client,
+                        token.clone(),
+                        obj.scope,
+                        Some(user_id),
+                        client_db_id,
+                        server_config.name,
+                    )
+                    .await;
+                    db::delete_code(&client, &code).await;
+                    return Ok(json(&res));
+                } else {
+                    return Err(warp::reject::custom(AuthorizationError(
+                        "client id or user id not found".to_string(),
                     )));
                 }
             }
