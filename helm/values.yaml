@@ -10,6 +10,9 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
+cb:
+  databaseHost: "notes-database-postgresql"
+
 service:
   type: ClusterIP
   port: 80
