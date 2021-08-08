@@ -8,6 +8,8 @@ pub struct TokenParams {
     pub client_secret: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
+    pub pcke: Option<String>,
+    pub device: Option<String>,
     pub grant_type: String,
     pub redirect_uri: Option<String>,
     pub scope: Option<String>,

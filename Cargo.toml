@@ -16,6 +16,7 @@ chrono = "0.4.19"
 dotenv = "0.15.0" # read environment
 config = "0.10.1" # read config van vershillende sources
 base64 = "0.13.0"
+sha2 = "0.9.5"
 thiserror = "1.0.23"
 deadpool-postgres = "0.7.0" # Connection pool
 tokio-postgres = { version = "0.7.0", features = [ "with-chrono-0_4" ]} # Async client

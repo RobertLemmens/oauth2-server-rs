@@ -2,6 +2,7 @@ use crate::models::{AccessToken, Introspection, User};
 use chrono::{DateTime, Duration, Local};
 use deadpool_postgres::Client;
 use tokio_pg_mapper::FromTokioPostgresRow;
+use sha2::{Sha256, Digest};
 
 // validate in 1 go?
 pub async fn validate_access_token(
@@ -88,14 +89,21 @@ pub async fn validate_client_credentials(
     }
 }
 
-pub async fn validate_code(client: &Client, code: &String) -> i32 {
+pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> i32 {
+    let mut hasher = Sha256::new();
+    hasher.update(pcke);
+    let pcke_result = format!("{:X}", hasher.finalize()).to_lowercase();
+
+    println!("Looking for code {}", code);
+    println!("Looking for pcke {}", pcke_result);
+
     let statement = client
-        .prepare("select * from authorization_codes where code = $1")
+        .prepare("select * from authorization_codes where code = $1 and pcke_hash = $2")
         .await
         .unwrap();
 
     let code_response = client
-        .query(&statement, &[&code])
+        .query(&statement, &[&code, &pcke_result])
         .await
         .expect("Error executing query on authorization_codes table");
 
@@ -135,18 +143,23 @@ pub async fn insert_token(
     uid: Option<i32>,
     cid: i32,
     issuer: String,
+    device: Option<String>,
 ) -> AccessToken {
-    let statement = client.prepare("insert into access_tokens (access_token, expire_time, user_id, client_id, scope, creation_time, token_type, issuer) 
-                                   values($1, $2, $3, $4, $5, NOW(), 'bearer', $6) 
+    let statement = client.prepare("insert into access_tokens (access_token, expire_time, user_id, client_id, scope, creation_time, token_type, issuer, device) 
+                                   values($1, $2, $3, $4, $5, NOW(), 'bearer', $6, $7) 
                                    on conflict on constraint unique_uid_cid do 
-                                   update set access_token = $1, expire_time = $2, creation_time = NOW(), scope = $5, issuer = $6").await.unwrap();
+                                   update set access_token = $1, expire_time = $2, creation_time = NOW(), scope = $5, issuer = $6, device = $7").await.unwrap();
     let token_duration = Duration::days(30);
     let local: DateTime<chrono::Local> = Local::now() + token_duration;
+    let device_str: String = match device {
+        Some(x) => x,
+        None => "unknown".to_string()
+    };
 
     let _result = client
         .query(
             &statement,
-            &[&generated_token, &local, &uid, &cid, &_scope, &issuer],
+            &[&generated_token, &local, &uid, &cid, &_scope, &issuer, &device_str],
         )
         .await
         .expect("Error creating access token");

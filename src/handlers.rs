@@ -41,8 +41,8 @@ pub async fn validate_client(client_authorization: String, client: &Client) -> i
 }
 
 // Returns the user id if valid, 0 if invalid
-pub async fn validate_code(client: &Client, code: &String) -> i32 {
-    let user_id = db::validate_code(&client, code).await;
+pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> i32 {
+    let user_id = db::validate_code(&client, code, pcke).await;
     user_id
 }
 
@@ -96,10 +96,12 @@ pub async fn get_access_token(
     let client: Client = db_pool.get().await.expect("Error connecting to database");
 
     if client_authorization.is_empty() {
+        print!("Empty client auth?");
         return Err(warp::reject::custom(AuthorizationError(
             "Client credentials invalid".to_string(),
         )));
     }
+
 
     match params {
         Some(obj) => match obj.grant_type.as_str() {
@@ -121,6 +123,7 @@ pub async fn get_access_token(
                             Some(validation),
                             client_db_id,
                             server_config.name,
+                            obj.device,
                         )
                         .await;
                         return Ok(json(&res));
@@ -142,6 +145,7 @@ pub async fn get_access_token(
                         None,
                         client_db_id,
                         server_config.name,
+                        obj.device,
                     )
                     .await;
                     return Ok(json(&res));
@@ -151,10 +155,15 @@ pub async fn get_access_token(
                     )));
                 }
             }
-            "authorization_code" => {
+            "authorization_code" => { //TODO add device hier ook, als extra check?
+                println!("test");
+                println!("{}", client_authorization);
                 let client_db_id = validate_client(client_authorization, &client).await; //TODO support voor PCKE ipv client_secret hier
                 let code = obj.code.unwrap();
-                let user_id = validate_code(&client, &code).await;
+                let pcke = obj.pcke.unwrap(); //TODO remove unwraps for safer code (unwrap will panic)
+                println!("Found client {}", client_db_id);
+                let user_id = validate_code(&client, &code, &pcke).await;
+                println!("Found user {}", user_id);
                 if client_db_id > 0 && user_id > 0 {
                     let token = generate_token();
                     let res = db::insert_token(
@@ -164,6 +173,7 @@ pub async fn get_access_token(
                         Some(user_id),
                         client_db_id,
                         server_config.name,
+                        obj.device,
                     )
                     .await;
                     db::delete_code(&client, &code).await;
@@ -182,6 +192,7 @@ pub async fn get_access_token(
         },
         None => {}
     }
+    print!("end of the road..");
 
     return Err(warp::reject::not_found());
 }
