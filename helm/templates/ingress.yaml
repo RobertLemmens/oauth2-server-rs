@@ -18,7 +18,7 @@ metadata:
 spec:
   tls:
   - hosts:
-    - oauth2.codebulb.nl
+    - {{ .Values.ingress.tlshost }}
     secretName: oauth2-tls
   rules:
     {{- range .Values.ingress.hosts }}
