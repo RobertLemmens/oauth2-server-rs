@@ -23,26 +23,35 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-          - name: SERVER.NAME
-            value: tokenissuer.nl
-          - name: SERVER.PORT
-            value: "8080"
-          - name: SERVER.HOST
-            value: "0.0.0.0"
-          - name: PG.HOST
-            value: {{ .Values.cb.databaseHost }}
-          - name: PG.PORT
-            value: "5432"
-          - name: PG.USER
-            value: postgres
-          - name: PG.PASSWORD
-            value: postgres
-          - name: PG.DBNAME
-            value: postgres
-          - name: PG.POOL.MAX_SIZE
-            value: "30"
-          - name: BOOTSTRAP
-            value: "false"
+            - name: SERVER.NAME
+              value: tokenissuer.nl
+            - name: SERVER.PORT
+              value: "8080"
+            - name: SERVER.HOST
+              value: "0.0.0.0"
+            - name: PG.HOST
+              value: {{ .Values.cb.databaseHost }}
+            - name: PG.PORT
+              value: "5432"
+            - name: PG.USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: postgres-creds
+            - name: PG.PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: postgres-creds
+            - name: PG.DBNAME
+              valueFrom:
+                secretKeyRef:
+                  key: database
+                  name: postgres-creds
+            - name: PG.POOL.MAX_SIZE
+              value: "30"
+            - name: BOOTSTRAP
+              value: "false"
           ports:
             - name: http
               containerPort: 8080

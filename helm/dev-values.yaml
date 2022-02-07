@@ -3,6 +3,9 @@ image:
   pullPolicy: Always
   tag: "dev"
 
+cb:
+  databaseHost: "notes-database-dev-postgresql"
+
 ingress:
   tlshost: oauth2-dev.codebulb.nl
   enabled: true
