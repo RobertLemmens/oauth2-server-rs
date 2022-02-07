@@ -1,0 +1,12 @@
+image:
+  repository: rlemmens/oauth2-server-rs
+  pullPolicy: Always
+  tag: "dev"
+
+ingress:
+  enabled: true
+  annotations: 
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: oauth2-dev.codebulb.nl
