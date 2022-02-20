@@ -48,6 +48,7 @@ pub struct Introspection {
     pub active: bool,
     pub client_id: String,
     pub username: Option<String>,
+    pub user_id: Option<i32>,
     pub scope: Option<String>,
     pub token_type: String,
     pub issuer: String,

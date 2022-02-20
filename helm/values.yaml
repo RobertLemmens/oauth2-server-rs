@@ -5,10 +5,10 @@
 replicaCount: 1
 
 image:
-  repository: rlemmens/oauth2-server-rs
+  repository: gcr.io/notes-c11be/oauth2-server-rs
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.2.0"
+  tag: "0.3.0"
 
 cb:
   databaseHost: "notes-database-postgresql"

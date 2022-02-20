@@ -10,7 +10,7 @@ pub async fn validate_access_token(
     access_token: String,
     client_db_id: i32,
 ) -> Option<Introspection> {
-    let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, b.client_id, b.display_name, a.token_type, a.issuer 
+    let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, c.id, b.client_id, b.display_name, a.token_type, a.issuer
                                    from access_tokens as a join clients as b on a.client_id = b.id left join users as c on a.user_id = c.id 
                                    where a.access_token = $1 and b.id = $2").await.unwrap();
     let response = client
@@ -35,11 +35,12 @@ pub async fn validate_access_token(
 
     return Some(Introspection {
         active: is_active,
-        client_id: response[0].get(4),
+        client_id: response[0].get(5),
         username: response[0].get(3),
+        user_id: response[0].get(4),
         scope: response[0].get(0),
-        token_type: response[0].get(6),
-        issuer: response[0].get(7),
+        token_type: response[0].get(7),
+        issuer: response[0].get(8),
         exp: expire_time.timestamp(),
         iat: creation_time.timestamp(),
     })
