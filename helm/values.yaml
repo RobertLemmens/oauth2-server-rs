@@ -23,7 +23,7 @@ ingress:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
-    - host: oauth2.codebulb.nl
+    - host: tokenserver.example.nl
 
 autoscaling:
   enabled: false
