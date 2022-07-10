@@ -3,3 +3,5 @@ steps:
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/oauth2-server-rs:0.3.0', '.']
 timeout: '1600s'
 images: ['gcr.io/$PROJECT_ID/oauth2-server-rs:0.3.0']
+options:
+  machineType: E2_HIGHCPU_8
