@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       containers:
-      - image: "gcr.io/$PROJECT_ID/oauth2-server-rs:0.3.0"
+      - image: "gcr.io/codebulb/oauth2-server-rs:0.3.0"
         env:
         - name: bootstrap
           value: 'false'
