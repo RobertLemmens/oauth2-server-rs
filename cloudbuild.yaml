@@ -4,7 +4,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/oauth2-server-rs:0.3.0']
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['run', 'services', 'replace', 'service.yaml']
+    args: ['run', 'services', 'replace', 'service.yaml', '--region=europe-west4']
 timeout: '1600s'
 images: ['gcr.io/$PROJECT_ID/oauth2-server-rs:0.3.0']
 options:

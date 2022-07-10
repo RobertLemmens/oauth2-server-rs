@@ -17,7 +17,7 @@ spec:
         - name: SERVER.NAME
           valueFrom:
             secretKeyRef:
-              key: "1.0"
+              key: "1"
               name: "TOKEN_SERVER_NAME"
         - name: PG.USER
           valueFrom:
