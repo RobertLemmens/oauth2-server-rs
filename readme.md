@@ -6,9 +6,11 @@ An oauth2 server build in rust.
 ### Prerequisites
 * A postgres database
 ### Deployment
-There are a couple of ways to deploy this:
+There are a couple of ways to deploy this, choose one of the following methods:
 1. Kubernetes: Install the helm chart under the helm/ directory. Inspect the values.yaml and deployment.yaml for parameters.
 2. Knative: Install the service.yaml under the knative/ directory. Inspect service.yaml for parameters.
+  * `kubectl apply -f knative/service.yaml -n your_namespace`
+  * `kubectl get ksvc oauth2-tokenserver -n your_namespace` to get the url. 
 3. Docker: docker run rlemmens/oauth2-server-rs:0.3.1
   * Make sure to pass environment variables needed (like postgres db settings). See the .env file for all parameters.
 4. DIY: Build the container and run it. See the .env file for parameters you need to supply through the environment.
