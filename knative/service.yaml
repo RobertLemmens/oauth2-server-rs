@@ -1,0 +1,30 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: oauth2-tokenserver
+spec:
+  template:
+    spec:
+      containers:
+      - image: rlemmens/oauth2-server-rs:0.3.1
+        env:
+        - name: SERVER.HOST
+          value: "0.0.0.0"
+        - name: SERVER.PORT
+          value: "8080"
+        - name: SERVER.NAME
+          value: "oauth2-tokenserver.nl"
+        - name: PG.USER
+          value: "postgres"
+        - name: PG.PASSWORD
+          value: "postgres"
+        - name: PG.HOST
+          value: "postgres"
+        - name: PG.PORT
+          value: "5432"
+        - name: PG.DBNAME
+          value: "postgres"
+        - name: PG.POOL.MAX_SIZE
+          value: "30"
+        - name: bootstrap
+          value: "false"
