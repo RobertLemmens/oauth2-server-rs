@@ -1,0 +1,5 @@
+FROM gcr.io/distroless/cc
+COPY target/release/oauth2-server-rs /
+COPY database_init.sql database_init.sql
+EXPOSE 8080
+CMD ["./oauth2-server-rs"]

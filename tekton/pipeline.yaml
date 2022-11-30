@@ -1,0 +1,73 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: rust
+  labels:
+    app.kubernetes.io/version: '0.2'
+  annotations:
+    tekton.dev/displayName: "Rust"
+    tekton.dev/pipelines.minVersion: '0.12.1'
+    tekton.dev/tags: "build, push, deploy, rust"
+spec:
+  description: >-
+    This pipeline is a complete solution to build and containerize your rust applications.
+  workspaces:
+    - name: source
+      description: The workspace that contains your cargo.toml and rust code. This will be the working directory. If this directory does not contain your source, set the context path aswell.
+    - name: dockerconfig
+      description: secret with config.json for docker auth
+    - name: ssh-creds
+      description: The directory that contains your ssh credentials.
+      optional: true
+  params:
+    - name: GIT_URI
+      type: string
+      description: The name of the container to build.
+    - name: IMAGE_NAME
+      type: string
+      description: The git url that contains your source code.
+    - name: DOCKERFILE
+      type: string
+      description: The dockerfile to build.
+    - name: CONTEXT_PATH
+      type: string
+      description: The context path for your sources
+      default: .
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: source
+        - name: ssh-directory
+          workspace: ssh-creds
+      params:
+        - name: url
+          value: '$(params.GIT_URI)'
+    - name: cargo-build
+      taskRef:
+        name: cargo
+        kind: ClusterTask
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: source
+    - name: container
+      taskRef:
+        name: kaniko
+        kind: ClusterTask
+      runAfter:
+        - cargo-build
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+      params:
+        - name: IMAGE
+          value: '$(params.IMAGE_NAME)'
+        - name: DOCKERFILE
+          value: '$(params.DOCKERFILE)'

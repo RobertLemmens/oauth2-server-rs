@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: oauth2-server-rs-
+spec:
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  pipelineRef:
+    name: rust
+  params:
+    - name: GIT_URI
+      value: 'https://github.com/RobertLemmens/oauth2-server-rs.git'
+    - name: IMAGE_NAME
+      value: 'rlemmens/oauth2-server-rs:0.3.1'
+    - name: DOCKERFILE
+      value: 'Dockerfile.distroless'
+  workspaces:
+    - name: dockerconfig
+      secret: 
+        secretName: dockerio-config
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
