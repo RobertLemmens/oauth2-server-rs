@@ -50,6 +50,9 @@ spec:
       taskRef:
         name: cargo
         kind: ClusterTask
+      params:
+        - name: COMPILE_FLAGS
+          value: ['--release'] 
       runAfter:
         - git-clone
       workspaces:

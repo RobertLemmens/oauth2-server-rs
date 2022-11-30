@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       containers:
-      - image: rlemmens/oauth2-server-rs:0.2.0
+      - image: rlemmens/oauth2-server-rs:0.3.2
         env:
         - name: SERVER.HOST
           value: "0.0.0.0"
