@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       containers:
-      - image: rlemmens/oauth2-server-rs:0.3.2
+      - image: rlemmens/oauth2-server-rs:0.3.3
         env:
         - name: SERVER.HOST
           value: "0.0.0.0"
@@ -15,16 +15,31 @@ spec:
         - name: SERVER.NAME
           value: "oauth2-tokenserver-rs"
         - name: PG.USER
-          value: "postgres"
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: postgres-creds
         - name: PG.PASSWORD
-          value: "postgres"
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: postgres-creds
         - name: PG.HOST
-          value: "postgres"
+          valueFrom:
+            configMapKeyRef:
+              key: host
+              name: oauth2-cm
         - name: PG.PORT
-          value: "5432"
+          valueFrom:
+            configMapKeyRef:
+              key: port
+              name: oauth2-cm
         - name: PG.DBNAME
-          value: "postgres"
+          valueFrom:
+            secretKeyRef:
+              key: database
+              name: postgres-creds
         - name: PG.POOL.MAX_SIZE
           value: "30"
         - name: bootstrap
-          value: "false"
+          value: "true"
