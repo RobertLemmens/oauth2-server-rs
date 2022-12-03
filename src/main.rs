@@ -38,10 +38,19 @@ async fn main() {
     if config.bootstrap {
         println!("Bootstrapping postgresql database...");
         if let Some(ref url) = config.pg.host {
-            println!("url is {:?}!", url);
+            println!("url is {}", url);
         }
         if let Some(ref port) = config.pg.port {
-            println!("port is {:?}!", port);
+            println!("port is {}", port);
+        }
+        if let Some(ref port) = config.pg.user {
+            println!("user is {}", port);
+        }
+        if let Some(ref port) = config.pg.password {
+            println!("password is {}", port);
+        }
+        if let Some(ref port) = config.pg.dbname {
+            println!("dbname is {}", port);
         }
         let client: Client = pool.get().await.expect("Error connecting to database");
         let file = fs::read_to_string("database_init.sql").expect("Could not load bootstrap script. The bootstrap script should be in the root of the run context");
