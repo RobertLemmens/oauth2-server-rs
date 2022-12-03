@@ -9,12 +9,12 @@ An oauth2 server build in rust. A project i build to learn about the oauth rfcs.
 There are a couple of ways to deploy this, choose one of the following methods:
 1. Kubernetes: Install the helm chart under the helm/ directory. Inspect the values.yaml and deployment.yaml for parameters.
 2. Knative: Install the service.yaml under the knative/ directory. Inspect service.yaml for parameters.
-  * `kubectl apply -f knative/service.yaml -n your_namespace`
-  * `kubectl get ksvc oauth2-tokenserver -n your_namespace` to get the url. 
+   * `kubectl apply -f knative/service.yaml -n your_namespace`
+   * `kubectl get ksvc oauth2-tokenserver -n your_namespace` to get the url. 
 3. Docker: docker run rlemmens/oauth2-server-rs:0.3.1
-  * Make sure to pass environment variables needed (like postgres db settings). See the .env file for all parameters.
+   * Make sure to pass environment variables needed (like postgres db settings). See the .env file for all parameters.
 4. DIY: Build the container and run it. See the .env file for parameters you need to supply through the environment.
-  * The Dockerfile contains a builder so you can just run `docker build -t oauth2server .` without thinking about rust or dependencies.
+   * The Dockerfile contains a builder so you can just run `docker build -t oauth2server .` without thinking about rust or dependencies.
 
 ## Goals
 The goal is to implement an oauth2 server based on [RFC-6749](https://tools.ietf.org/html/rfc6749) and [RFC-7662](https://tools.ietf.org/html/rfc7662) in rust. 
