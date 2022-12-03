@@ -46,24 +46,12 @@ spec:
       params:
         - name: url
           value: '$(params.GIT_URI)'
-    - name: cargo-build
-      taskRef:
-        name: cargo
-        kind: ClusterTask
-      params:
-        - name: COMPILE_FLAGS
-          value: ['--release'] 
-      runAfter:
-        - git-clone
-      workspaces:
-        - name: source
-          workspace: source
     - name: container
       taskRef:
         name: kaniko
         kind: ClusterTask
       runAfter:
-        - cargo-build
+        - git-clone
       workspaces:
         - name: source
           workspace: source

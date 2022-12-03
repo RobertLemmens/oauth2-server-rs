@@ -14,7 +14,7 @@ spec:
     - name: IMAGE_NAME
       value: 'rlemmens/oauth2-server-rs:0.3.2'
     - name: DOCKERFILE
-      value: 'Dockerfile.distroless'
+      value: 'Dockerfile'
   workspaces:
     - name: dockerconfig
       secret: 

@@ -1,6 +1,6 @@
 # oauth2-server-rs
 
-An oauth2 server build in rust.
+An oauth2 server build in rust. A project i build to learn about the oauth rfcs. 
 
 ## Deployment
 ### Prerequisites
