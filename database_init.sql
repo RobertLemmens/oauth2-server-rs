@@ -59,7 +59,7 @@ create table if not exists authorization_codes (
 create table if not exists login_sessions (
   id serial primary key,
   session_token varchar(255) not null,
-  user_id integer,
+  user_id UUID,
   creation_time timestamp with time zone not null,
   expire_time timestamp with time zone not null
 );
