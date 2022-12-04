@@ -10,7 +10,7 @@ spec:
           configMap:
             name: postgres-ca
       containers:
-      - image: rlemmens/oauth2-server-rs:0.3.6
+      - image: rlemmens/oauth2-server-rs:0.3.7
         volumeMounts:
             - name: postgres-ca
               mountPath: /app
