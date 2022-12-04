@@ -1,6 +1,7 @@
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
 use tokio_pg_mapper_derive::PostgresMapper;
+use uuid::Uuid;
 
 #[derive(Deserialize, Serialize)]
 pub struct TokenParams {
@@ -48,7 +49,7 @@ pub struct Introspection {
     pub active: bool,
     pub client_id: String,
     pub username: Option<String>,
-    pub user_id: Option<i32>,
+    pub user_id: Option<Uuid>,
     pub scope: Option<String>,
     pub token_type: String,
     pub issuer: String,

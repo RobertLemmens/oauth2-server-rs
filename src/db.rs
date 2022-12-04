@@ -3,12 +3,12 @@ use chrono::{DateTime, Duration, Local};
 use deadpool_postgres::Client;
 use tokio_pg_mapper::FromTokioPostgresRow;
 use sha2::{Sha256, Digest};
-
+use uuid::Uuid;
 // validate in 1 go?
 pub async fn validate_access_token(
     client: &Client,
     access_token: String,
-    client_db_id: i32,
+    client_db_id: Uuid,
 ) -> Option<Introspection> {
     let statement = client.prepare("select a.scope, a.expire_time, a.creation_time, c.username, c.id, b.client_id, b.display_name, a.token_type, a.issuer
                                    from access_tokens as a join clients as b on a.client_id = b.id left join users as c on a.user_id = c.id 
@@ -50,7 +50,7 @@ pub async fn validate_password_credentials(
     client: &Client,
     username: String,
     password: String,
-) -> i32 {
+) -> Option<Uuid> {
     let statement = client
         .prepare("select id from users where username = $1 and password = $2")
         .await
@@ -62,9 +62,9 @@ pub async fn validate_password_credentials(
         .expect("Error executing query on users table");
 
     if user.len() == 1 {
-        return user.get(0).unwrap().get(0);
+        return Some(user.get(0).unwrap().get(0));
     } else {
-        return 0;
+        return None;
     }
 }
 
@@ -72,7 +72,7 @@ pub async fn validate_client_credentials(
     client: &Client,
     client_id: String,
     secret: String,
-) -> i32 {
+) -> Option<Uuid> {
     let statement = client
         .prepare("select id from clients where client_id = $1 and client_secret = $2")
         .await
@@ -84,13 +84,13 @@ pub async fn validate_client_credentials(
         .expect("Error executing query on clients table");
 
     if client_response.len() == 1 {
-        return client_response.get(0).unwrap().get(0);
+        return Some(client_response.get(0).unwrap().get(0));
     } else {
-        return 0;
+        return None;
     }
 }
 
-pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> i32 {
+pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> Option<Uuid> {
     let mut hasher = Sha256::new();
     hasher.update(pcke);
     let pcke_result = format!("{:X}", hasher.finalize()).to_lowercase();
@@ -110,9 +110,9 @@ pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> i32
 
     if code_response.len() == 1 {
         // TODO check tijd op token
-        return code_response.get(0).unwrap().get(2);
+        return Some(code_response.get(0).unwrap().get(2));
     } else {
-        return 0;
+        return None;
     }
 }
 
@@ -141,8 +141,8 @@ pub async fn insert_token(
     client: &Client,
     generated_token: String,
     _scope: Option<String>,
-    uid: Option<i32>,
-    cid: i32,
+    uid: Option<Uuid>,
+    cid: Uuid,
     issuer: String,
     device: Option<String>,
 ) -> AccessToken {

@@ -20,7 +20,7 @@ create table if not exists user_data (
 );
 
 create table if not exists clients (
-  id serial primary key,
+  id UUID primary key DEFAULT gen_random_uuid(),
   display_name varchar(50),
   client_id varchar(50) not null unique,
   client_secret varchar(512) not null
@@ -34,7 +34,7 @@ create table if not exists access_tokens (
   scope varchar(255),
   token_type varchar(50) not null,
   user_id integer,
-  client_id integer not null,
+  client_id UUID not null,
   device varchar(255) not null,
   issuer varchar(255) not null,
   foreign key (user_id) references users(id),
@@ -43,7 +43,7 @@ create table if not exists access_tokens (
 
 create table if not exists authorization_codes (
   id serial primary key,
-  client_id integer,
+  client_id UUID,
   user_id integer,
   code varchar(255) not null,
   device varchar(255) not null,

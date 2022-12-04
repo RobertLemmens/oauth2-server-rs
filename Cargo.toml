@@ -18,8 +18,9 @@ config = "0.10.1" # read config van vershillende sources
 base64 = "0.13.0"
 sha2 = "0.9.5"
 thiserror = "1.0.23"
+uuid =  { version = "0.8", features = ["serde", "v4"]}
 deadpool-postgres = "0.7.0" # Connection pool
-tokio-postgres = { version = "0.7.0", features = [ "with-chrono-0_4" ]} # Async client
+tokio-postgres = { version = "0.7.0", features = [ "with-chrono-0_4", "with-uuid-0_8" ]} # Async client
 native-tls = "0.2.0"
 postgres-native-tls = "0.5.0"
 tokio-pg-mapper = "0.2.0"

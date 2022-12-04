@@ -9,6 +9,7 @@ use std::str;
 use std::str::FromStr;
 use warp::http::Uri;
 use warp::{reply::json, Rejection, Reply};
+use uuid::Uuid;
 
 fn generate_token() -> String {
     rand::thread_rng()
@@ -28,7 +29,7 @@ fn decode_client_auth(client_authorization: String) -> Vec<String> {
         .collect()
 }
 
-pub async fn validate_client(client_authorization: String, client: &Client) -> i32 {
+pub async fn validate_client(client_authorization: String, client: &Client) -> Option<Uuid> {
     let client_credentials = decode_client_auth(client_authorization);
     let client_db_id = db::validate_client_credentials(
         &client,
@@ -41,7 +42,7 @@ pub async fn validate_client(client_authorization: String, client: &Client) -> i
 }
 
 // Returns the user id if valid, 0 if invalid
-pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> i32 {
+pub async fn validate_code(client: &Client, code: &String, pcke: &String) -> Option<Uuid> {
     let user_id = db::validate_code(&client, code, pcke).await;
     user_id
 }
@@ -54,12 +55,14 @@ pub async fn introspect_token(
 ) -> std::result::Result<impl Reply, Rejection> {
     let client: Client = db_pool.get().await.expect("Error connecting to database");
     let client_db_id = validate_client(client_authorization, &client).await;
-    if client_db_id == 0 {
+
+    if let None = client_db_id {
         return Err(warp::reject::custom(AuthorizationError(
             "Client credentials invalid".to_string(),
         )));
     }
-    let result = db::validate_access_token(&client, access_token, client_db_id);
+
+    let result = db::validate_access_token(&client, access_token, client_db_id.unwrap());
 
     match result.await {
         None => {
@@ -114,14 +117,15 @@ pub async fn get_access_token(
                         obj.password.unwrap(),
                     )
                     .await;
-                    if validation > 0 && client_db_id > 0 {
+
+                    if let (Some(client_id), Some(validated_user)) = (client_db_id, validation) {
                         let token = generate_token();
                         let res = db::insert_token(
                             &client,
                             token.clone(),
                             obj.scope,
-                            Some(validation),
-                            client_db_id,
+                            validation,
+                            client_id,
                             server_config.name,
                             obj.device,
                         )
@@ -136,14 +140,14 @@ pub async fn get_access_token(
             }
             "client_credentials" => {
                 let client_db_id = validate_client(client_authorization, &client).await;
-                if client_db_id > 0 {
+                if let Some(client_id) = client_db_id {
                     let token = generate_token();
                     let res = db::insert_token(
                         &client,
                         token.clone(),
                         obj.scope,
                         None,
-                        client_db_id,
+                        client_id,
                         server_config.name,
                         obj.device,
                     )
@@ -161,17 +165,17 @@ pub async fn get_access_token(
                 let client_db_id = validate_client(client_authorization, &client).await; //TODO support voor PCKE ipv client_secret hier
                 let code = obj.code.unwrap();
                 let pcke = obj.pcke.unwrap(); //TODO remove unwraps for safer code (unwrap will panic)
-                println!("Found client {}", client_db_id);
+                println!("Found client {}", client_db_id.unwrap());
                 let user_id = validate_code(&client, &code, &pcke).await;
-                println!("Found user {}", user_id);
-                if client_db_id > 0 && user_id > 0 {
+                println!("Found user {}", user_id.unwrap());
+                if let (Some(client_id), Some(user_uid)) = (client_db_id, user_id) {
                     let token = generate_token();
                     let res = db::insert_token(
                         &client,
                         token.clone(),
                         obj.scope,
-                        Some(user_id),
-                        client_db_id,
+                        user_id,
+                        client_id,
                         server_config.name,
                         obj.device,
                     )
