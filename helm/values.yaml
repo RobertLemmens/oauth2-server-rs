@@ -8,7 +8,7 @@ image:
   repository: gcr.io/notes-c11be/oauth2-server-rs
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.3.0"
+  tag: "0.3.7"
 
 cb:
   databaseHost: "notes-database-postgresql"
