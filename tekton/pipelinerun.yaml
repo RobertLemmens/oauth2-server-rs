@@ -12,7 +12,7 @@ spec:
     - name: GIT_URI
       value: 'https://github.com/RobertLemmens/oauth2-server-rs.git'
     - name: IMAGE_NAME
-      value: 'rlemmens/oauth2-server-rs:0.3.3'
+      value: 'rlemmens/oauth2-server-rs:0.3.5'
     - name: DOCKERFILE
       value: 'Dockerfile'
   workspaces:

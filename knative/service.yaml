@@ -5,15 +5,22 @@ metadata:
 spec:
   template:
     spec:
+      volumes:
+        - name: postgres-ca
+          configMap:
+            name: postgres-ca
       containers:
-      - image: rlemmens/oauth2-server-rs:0.3.3
+      - image: rlemmens/oauth2-server-rs:0.3.5
+        volumeMounts:
+            - name: postgres-ca
+              mountPath: /
         env:
         - name: SERVER.HOST
           value: "0.0.0.0"
         - name: SERVER.PORT
           value: "8080"
         - name: SERVER.NAME
-          value: "oauth2-tokenserver-rs"
+          value: "oauth-tokenserver-rs"
         - name: PG.USER
           valueFrom:
             secretKeyRef:

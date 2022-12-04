@@ -56,14 +56,14 @@ pub struct Introspection {
     pub iat: i64,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub name: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub server: ServerConfig,
     pub bootstrap: bool,

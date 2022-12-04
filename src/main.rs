@@ -6,15 +6,19 @@ mod response;
 
 use crate::db::*;
 use crate::models::{AuthorizationParams, Config, TokenParams};
-use deadpool_postgres::Client;
+use deadpool_postgres::{Client, PoolError};
 use dotenv::dotenv;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::fs;
+use std::{fs, io};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use tokio_postgres::NoTls;
+use native_tls::{Certificate, TlsConnector};
+use postgres_native_tls::MakeTlsConnector;
 use warp::http::Response;
 use warp::{hyper::StatusCode, Filter, Rejection, Reply};
+use thiserror::Error;
+
 
 fn with_db(
     db_pool: deadpool_postgres::Pool,
@@ -28,33 +32,56 @@ fn with_config(
     warp::any().map(move || config.server.clone())
 }
 
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("could not read pem file for tls")]
+    Read(#[from] io::Error),
+    #[error("tls error")]
+    Tls(#[from] native_tls::Error),
+    #[error("unknown config error")]
+    Unknown,
+}
+
+fn setup_tls() -> Result<MakeTlsConnector, ConfigError> {
+    let cert = fs::read("root.pem")?;
+    let cert = Certificate::from_pem(&cert)?;
+    let connector = TlsConnector::builder()
+        .add_root_certificate(cert)
+        .build()?;
+    let connector = MakeTlsConnector::new(connector);
+    return Ok(connector);
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
     let config: Config = crate::models::Config::from_env().unwrap();
-    let pool = config.pg.create_pool(NoTls).unwrap();
+
+    let tls = setup_tls();
+    let pool = match tls {
+        Ok(res) => config.pg.create_pool(res).unwrap(),
+        Err(msg) =>  { 
+            println!("Error setting up TLS, continuing without. Message: {:?}", msg);
+            config.pg.create_pool(NoTls).unwrap() 
+        },
+    };
 
     if config.bootstrap {
         println!("Bootstrapping postgresql database...");
-        if let Some(ref url) = config.pg.host {
-            println!("url is {}", url);
+        match pool.get().await {
+            Ok(client) => {
+                let file = fs::read_to_string("database_init.sql").expect("Could not load bootstrap script. The bootstrap script should be in the root of the run context");
+                db::create_tables(&client, file.as_str()).await;
+            }
+            Err(PoolError::Backend(e)) => {
+                println!("Backend Error {}", e);
+            }
+            Err(_) => {
+                println!("Error - unknown");
+            }
+
         }
-        if let Some(ref port) = config.pg.port {
-            println!("port is {}", port);
-        }
-        if let Some(ref port) = config.pg.user {
-            println!("user is {}", port);
-        }
-        if let Some(ref port) = config.pg.password {
-            println!("password is {}", port);
-        }
-        if let Some(ref port) = config.pg.dbname {
-            println!("dbname is {}", port);
-        }
-        let client: Client = pool.get().await.expect("Error connecting to database");
-        let file = fs::read_to_string("database_init.sql").expect("Could not load bootstrap script. The bootstrap script should be in the root of the run context");
-        db::create_tables(&client, file.as_str()).await;
     }
 
 
