@@ -64,30 +64,5 @@ create table if not exists login_sessions (
 );
 
 alter table access_tokens add constraint unique_uid_cid unique (user_id, client_id, device);
+insert into clients (display_name, client_id, client_secret) values ('Mijn Client', 'top', 'top_321');
 
-insert into clients (display_name, client_id, client_secret) values ('Mijn Client', 'top', 'twilight_top_321');
-
--- Notes api --
-create table if not exists notebooks(
-    id serial primary key,
-    name varchar(50) not null,
-    creation_date timestamp not null,
-    update_date timestamp not null,
-    space_id integer,
-    user_id integer,
-
-    foreign key (user_id) references users(id)
-);
-
-create table if not exists notes (
-    id serial primary key,
-    name varchar(50) not null,
-    content text,
-    notebook_id integer not null,
-    creation_date timestamp not null,
-    update_date timestamp not null,
-    user_id integer,
-
-    foreign key (user_id) references users(id),
-    foreign key (notebook_id) references notebooks(id)
-);
