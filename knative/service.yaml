@@ -19,6 +19,8 @@ spec:
           value: "0.0.0.0"
         - name: SERVER.PORT
           value: "8080"
+        - name: SERVER.CERT_DIR
+          value: "/app"
         - name: SERVER.NAME
           value: "oauth-tokenserver-rs"
         - name: PG.USER
@@ -49,4 +51,4 @@ spec:
         - name: PG.POOL.MAX_SIZE
           value: "30"
         - name: bootstrap
-          value: "true"
+          value: "false"
