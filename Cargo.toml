@@ -1,6 +1,6 @@
 [package]
 name = "oauth2-server-rs"
-version = "0.3.5"
+version = "0.3.6"
 authors = ["Robert Lemmens <rj.lemmens@pm.me>"]
 edition = "2018"
 

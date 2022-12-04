@@ -42,8 +42,9 @@ pub enum ConfigError {
     Unknown,
 }
 
-fn setup_tls() -> Result<MakeTlsConnector, ConfigError> {
-    let cert = fs::read("root.pem")?;
+fn setup_tls(cert_dir: String) -> Result<MakeTlsConnector, ConfigError> {
+    let cert_path = cert_dir + "/root.pem";
+    let cert = fs::read(cert_path)?;
     let cert = Certificate::from_pem(&cert)?;
     let connector = TlsConnector::builder()
         .add_root_certificate(cert)
@@ -58,7 +59,7 @@ async fn main() {
 
     let config: Config = crate::models::Config::from_env().unwrap();
 
-    let tls = setup_tls();
+    let tls = setup_tls(config.server.cert_dir.to_owned());
     let pool = match tls {
         Ok(res) => config.pg.create_pool(res).unwrap(),
         Err(msg) =>  { 

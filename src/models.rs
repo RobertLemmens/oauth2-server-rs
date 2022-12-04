@@ -61,6 +61,7 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub name: String,
+    pub cert_dir: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
