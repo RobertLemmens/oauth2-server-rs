@@ -61,7 +61,10 @@ async fn main() {
 
     let tls = setup_tls(config.server.cert_dir.to_owned());
     let pool = match tls {
-        Ok(res) => config.pg.create_pool(res).unwrap(),
+        Ok(res) => {
+            println!("Setup TLS");
+            config.pg.create_pool(res).unwrap() 
+        },
         Err(msg) =>  { 
             println!("Error setting up TLS, continuing without. Message: {:?}", msg);
             config.pg.create_pool(NoTls).unwrap() 
